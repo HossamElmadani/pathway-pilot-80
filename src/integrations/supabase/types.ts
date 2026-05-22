@@ -14,39 +14,8 @@ export type Database = {
   }
   public: {
     Tables: {
-      agencies: {
-        Row: {
-          created_at: string
-          custom_domain: string | null
-          id: string
-          logo_url: string | null
-          name: string
-          primary_color: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          custom_domain?: string | null
-          id?: string
-          logo_url?: string | null
-          name: string
-          primary_color?: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          custom_domain?: string | null
-          id?: string
-          logo_url?: string | null
-          name?: string
-          primary_color?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       applications: {
         Row: {
-          agency_id: string
           created_at: string
           id: string
           notes: string | null
@@ -55,7 +24,6 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          agency_id: string
           created_at?: string
           id?: string
           notes?: string | null
@@ -64,7 +32,6 @@ export type Database = {
           user_id: string
         }
         Update: {
-          agency_id?: string
           created_at?: string
           id?: string
           notes?: string | null
@@ -72,26 +39,10 @@ export type Database = {
           university_id?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "applications_agency_id_fkey"
-            columns: ["agency_id"]
-            isOneToOne: false
-            referencedRelation: "agencies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "applications_university_id_fkey"
-            columns: ["university_id"]
-            isOneToOne: false
-            referencedRelation: "universities"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       documents: {
         Row: {
-          agency_id: string
           created_at: string
           feedback: string | null
           file_name: string
@@ -106,7 +57,6 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          agency_id: string
           created_at?: string
           feedback?: string | null
           file_name: string
@@ -121,7 +71,6 @@ export type Database = {
           user_id: string
         }
         Update: {
-          agency_id?: string
           created_at?: string
           feedback?: string | null
           file_name?: string
@@ -135,20 +84,12 @@ export type Database = {
           type?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "documents_agency_id_fkey"
-            columns: ["agency_id"]
-            isOneToOne: false
-            referencedRelation: "agencies"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       profiles: {
         Row: {
           academic_info: Json
-          agency_id: string | null
+          assigned_worker_id: string | null
           avatar_url: string | null
           created_at: string
           current_step: number
@@ -163,7 +104,7 @@ export type Database = {
         }
         Insert: {
           academic_info?: Json
-          agency_id?: string | null
+          assigned_worker_id?: string | null
           avatar_url?: string | null
           created_at?: string
           current_step?: number
@@ -178,7 +119,7 @@ export type Database = {
         }
         Update: {
           academic_info?: Json
-          agency_id?: string | null
+          assigned_worker_id?: string | null
           avatar_url?: string | null
           created_at?: string
           current_step?: number
@@ -193,17 +134,16 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "profiles_agency_id_fkey"
-            columns: ["agency_id"]
+            foreignKeyName: "profiles_assigned_worker_id_fkey"
+            columns: ["assigned_worker_id"]
             isOneToOne: false
-            referencedRelation: "agencies"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
       }
       step_progress: {
         Row: {
-          agency_id: string
           approved_at: string | null
           approved_by: string | null
           data: Json
@@ -214,7 +154,6 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          agency_id: string
           approved_at?: string | null
           approved_by?: string | null
           data?: Json
@@ -225,7 +164,6 @@ export type Database = {
           user_id: string
         }
         Update: {
-          agency_id?: string
           approved_at?: string | null
           approved_by?: string | null
           data?: Json
@@ -235,19 +173,10 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "step_progress_agency_id_fkey"
-            columns: ["agency_id"]
-            isOneToOne: false
-            referencedRelation: "agencies"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       universities: {
         Row: {
-          agency_id: string
           badges: string[]
           country: string
           created_at: string
@@ -260,20 +189,18 @@ export type Database = {
           ranking: number | null
         }
         Insert: {
-          agency_id: string
           badges?: string[]
           country?: string
           created_at?: string
           description?: string | null
           id?: string
           image_url?: string | null
-          location: string
+          location?: string
           name: string
           price?: number | null
           ranking?: number | null
         }
         Update: {
-          agency_id?: string
           badges?: string[]
           country?: string
           created_at?: string
@@ -285,15 +212,7 @@ export type Database = {
           price?: number | null
           ranking?: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "universities_agency_id_fkey"
-            columns: ["agency_id"]
-            isOneToOne: false
-            referencedRelation: "agencies"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       user_roles: {
         Row: {
@@ -318,7 +237,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      current_agency_id: { Args: never; Returns: string }
+      can_manage_student: { Args: { _student_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -326,10 +245,11 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_agency_admin: { Args: never; Returns: boolean }
+      is_director: { Args: never; Returns: boolean }
+      is_staff: { Args: never; Returns: boolean }
     }
     Enums: {
-      app_role: "superadmin" | "agency_admin" | "student"
+      app_role: "director" | "worker" | "student"
       application_status:
         | "pending"
         | "submitted"
@@ -337,7 +257,12 @@ export type Database = {
         | "rejected"
         | "waitlisted"
       doc_status: "pending" | "approved" | "rejected"
-      step_status: "locked" | "in_progress" | "submitted" | "approved"
+      step_status:
+        | "locked"
+        | "in_progress"
+        | "pending_review"
+        | "approved"
+        | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -465,7 +390,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["superadmin", "agency_admin", "student"],
+      app_role: ["director", "worker", "student"],
       application_status: [
         "pending",
         "submitted",
@@ -474,7 +399,13 @@ export const Constants = {
         "waitlisted",
       ],
       doc_status: ["pending", "approved", "rejected"],
-      step_status: ["locked", "in_progress", "submitted", "approved"],
+      step_status: [
+        "locked",
+        "in_progress",
+        "pending_review",
+        "approved",
+        "rejected",
+      ],
     },
   },
 } as const
