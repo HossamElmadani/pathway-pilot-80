@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Card } from "@/components/ui/card";
-import { Users, Clock, Plane, GraduationCap, TrendingUp } from "lucide-react";
+import { Users, Clock, Plane, TrendingUp, Briefcase } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
@@ -11,29 +11,35 @@ export const Route = createFileRoute("/_authenticated/admin/")({
 });
 
 function AdminDashboard() {
-  const { agency } = useAuth();
+  const { profile, isDirector, user } = useAuth();
   const { t } = useI18n();
 
+  // Build a base "scope" — for workers, restrict to their assigned students.
+  // RLS already enforces this; we still apply explicit filters for accurate counts.
+  const studentFilter = (q: ReturnType<typeof supabase.from> extends infer _ ? any : any) => q;
+
   const { data: stats } = useQuery({
-    queryKey: ["admin-stats", agency?.id],
-    enabled: !!agency,
+    queryKey: ["admin-stats", user?.id, isDirector],
+    enabled: !!user,
     queryFn: async () => {
-      const [students, pending, visas] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id", { count: "exact", head: true })
-          .eq("agency_id", agency!.id),
-        supabase
-          .from("documents")
-          .select("id", { count: "exact", head: true })
-          .eq("agency_id", agency!.id)
-          .eq("status", "pending"),
-        supabase
-          .from("step_progress")
-          .select("id", { count: "exact", head: true })
-          .eq("agency_id", agency!.id)
-          .eq("step", 6),
-      ]);
+      // students count
+      let studentsQ = supabase
+        .from("profiles")
+        .select("id", { count: "exact", head: true });
+      if (!isDirector) studentsQ = studentsQ.eq("assigned_worker_id", user!.id);
+      const students = await studentsQ;
+
+      // pending docs — RLS scopes for workers
+      const pending = await supabase
+        .from("documents")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending");
+
+      const visas = await supabase
+        .from("step_progress")
+        .select("id", { count: "exact", head: true })
+        .eq("step", 6);
+
       return {
         students: students.count ?? 0,
         pending: pending.count ?? 0,
@@ -43,15 +49,14 @@ function AdminDashboard() {
   });
 
   const { data: stepDistribution = [] } = useQuery({
-    queryKey: ["step-dist", agency?.id],
-    enabled: !!agency,
+    queryKey: ["step-dist", user?.id, isDirector],
+    enabled: !!user,
     queryFn: async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("current_step")
-        .eq("agency_id", agency!.id);
+      let q = supabase.from("profiles").select("current_step");
+      if (!isDirector) q = q.eq("assigned_worker_id", user!.id);
+      const { data } = await q;
       const counts = new Array(7).fill(0);
-      (data ?? []).forEach((p: any) => {
+      (data ?? []).forEach((p) => {
         const i = (p.current_step ?? 1) - 1;
         if (i >= 0 && i < 7) counts[i]++;
       });
@@ -59,7 +64,34 @@ function AdminDashboard() {
     },
   });
 
-  const max = Math.max(1, ...(stepDistribution as any[]).map((d) => d.count));
+  const { data: workers = [] } = useQuery({
+    queryKey: ["workers-perf"],
+    enabled: isDirector,
+    queryFn: async () => {
+      const { data: roleRows } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "worker");
+      const ids = (roleRows ?? []).map((r) => r.user_id);
+      if (ids.length === 0) return [];
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id,name,email")
+        .in("id", ids);
+      const counts = await Promise.all(
+        (profs ?? []).map(async (w) => {
+          const { count } = await supabase
+            .from("profiles")
+            .select("id", { count: "exact", head: true })
+            .eq("assigned_worker_id", w.id);
+          return { ...w, students: count ?? 0 };
+        }),
+      );
+      return counts;
+    },
+  });
+
+  const max = Math.max(1, ...stepDistribution.map((d) => d.count));
 
   return (
     <div className="p-6 md:p-10 space-y-8 max-w-6xl">
@@ -69,7 +101,7 @@ function AdminDashboard() {
           {t("crm.dashboard")}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Vue d'ensemble — {agency?.name}
+          {isDirector ? "Vue globale de l'agence" : `Vos étudiants assignés — ${profile?.name}`}
         </p>
       </div>
 
@@ -83,12 +115,12 @@ function AdminDashboard() {
         <div className="mb-5 flex items-center justify-between">
           <div>
             <h3 className="font-display text-lg font-semibold">Distribution par étape</h3>
-            <p className="text-xs text-muted-foreground">Où se trouvent vos étudiants</p>
+            <p className="text-xs text-muted-foreground">Où se trouvent les étudiants</p>
           </div>
           <TrendingUp className="h-5 w-5 text-primary" />
         </div>
         <div className="space-y-3">
-          {(stepDistribution as any[]).map((d) => (
+          {stepDistribution.map((d) => (
             <div key={d.step} className="flex items-center gap-3">
               <span className="w-14 text-xs text-muted-foreground">Étape {d.step}</span>
               <div className="flex-1 overflow-hidden rounded-full bg-surface-2 h-2.5">
@@ -102,6 +134,40 @@ function AdminDashboard() {
           ))}
         </div>
       </Card>
+
+      {isDirector && (
+        <Card className="border-border bg-card p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h3 className="font-display text-lg font-semibold">Performance des conseillers</h3>
+              <p className="text-xs text-muted-foreground">Étudiants par worker</p>
+            </div>
+            <Briefcase className="h-5 w-5 text-primary" />
+          </div>
+          {workers.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              Aucun conseiller. Créez-en un depuis "Inviter".
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {workers.map((w) => (
+                <div
+                  key={w.id}
+                  className="flex items-center justify-between rounded-lg border border-border bg-surface-2/40 p-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{w.name}</p>
+                    <p className="truncate text-[10px] text-muted-foreground">{w.email}</p>
+                  </div>
+                  <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">
+                    {w.students} étudiants
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
     </div>
   );
 }
@@ -112,12 +178,17 @@ function KpiCard({
   value,
   color,
 }: {
-  icon: any;
+  icon: typeof Users;
   label: string;
   value: number;
   color: "primary" | "warning" | "success";
 }) {
-  const ring = color === "primary" ? "bg-primary/15 text-primary" : color === "warning" ? "bg-warning/15 text-warning" : "bg-success/15 text-success";
+  const ring =
+    color === "primary"
+      ? "bg-primary/15 text-primary"
+      : color === "warning"
+        ? "bg-warning/15 text-warning"
+        : "bg-success/15 text-success";
   return (
     <Card className="border-border bg-card p-5">
       <div className="flex items-center justify-between">

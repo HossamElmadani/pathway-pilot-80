@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth-context";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,35 +15,56 @@ export const Route = createFileRoute("/_authenticated/admin/validation")({
   component: Validation,
 });
 
+type DocRow = {
+  id: string;
+  type: string;
+  file_url: string;
+  file_name: string;
+  status: "pending" | "approved" | "rejected";
+  step: number;
+  user_id: string;
+  is_mandatory: boolean;
+  studentName?: string;
+  studentEmail?: string;
+};
+
 function Validation() {
-  const { agency } = useAuth();
   const qc = useQueryClient();
   const approve = useServerFn(approveDocument);
 
   const { data: docs = [] } = useQuery({
-    queryKey: ["pending-docs", agency?.id],
-    enabled: !!agency,
-    queryFn: async () => {
+    queryKey: ["pending-docs"],
+    queryFn: async (): Promise<DocRow[]> => {
+      // RLS already scopes to staff-accessible docs
       const { data, error } = await supabase
         .from("documents")
-        .select("id,type,file_url,file_name,status,step,user_id,is_mandatory,profiles!documents_user_id_fkey(name,email)")
-        .eq("agency_id", agency!.id)
+        .select("id,type,file_url,file_name,status,step,user_id,is_mandatory")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data ?? [];
+      const userIds = Array.from(new Set((data ?? []).map((d) => d.user_id)));
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id,name,email")
+        .in("id", userIds.length ? userIds : ["00000000-0000-0000-0000-000000000000"]);
+      const map = new Map((profs ?? []).map((p) => [p.id, p]));
+      return (data ?? []).map((d) => ({
+        ...d,
+        studentName: map.get(d.user_id)?.name,
+        studentEmail: map.get(d.user_id)?.email,
+      }));
     },
   });
 
-  const pending = (docs as any[]).filter((d) => d.status === "pending");
-  const reviewed = (docs as any[]).filter((d) => d.status !== "pending");
+  const pending = docs.filter((d) => d.status === "pending");
+  const reviewed = docs.filter((d) => d.status !== "pending");
 
   const decide = async (id: string, decision: "approved" | "rejected", feedback?: string) => {
     try {
       await approve({ data: { documentId: id, decision, feedback } });
       toast.success(decision === "approved" ? "Approuvé" : "Rejeté");
       qc.invalidateQueries({ queryKey: ["pending-docs"] });
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
     }
   };
 
@@ -52,7 +72,7 @@ function Validation() {
     <div className="p-6 md:p-10 max-w-5xl">
       <h1 className="font-display text-3xl font-semibold">Validation des documents</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Approuver les documents validés ou les rejeter avec un motif.
+        Approuvez les documents validés ou rejetez-les avec un motif.
       </p>
 
       <h2 className="mt-8 mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -76,11 +96,14 @@ function Validation() {
           </h2>
           <div className="space-y-2">
             {reviewed.slice(0, 10).map((d) => (
-              <Card key={d.id} className="flex items-center justify-between border-border bg-card p-3">
-                <div className="flex items-center gap-3 min-w-0">
+              <Card
+                key={d.id}
+                className="flex items-center justify-between border-border bg-card p-3"
+              >
+                <div className="flex min-w-0 items-center gap-3">
                   <FileText className="h-4 w-4 text-muted-foreground" />
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{d.profiles?.name}</p>
+                    <p className="truncate text-sm font-medium">{d.studentName}</p>
                     <p className="truncate text-[10px] text-muted-foreground">
                       Étape {d.step} · {d.type}
                     </p>
@@ -110,7 +133,7 @@ function DocRow({
   doc,
   onDecide,
 }: {
-  doc: any;
+  doc: DocRow;
   onDecide: (id: string, d: "approved" | "rejected", fb?: string) => void;
 }) {
   const [feedback, setFeedback] = useState("");
@@ -124,9 +147,10 @@ function DocRow({
               <FileText className="h-4 w-4 text-muted-foreground" />
             </div>
             <div className="min-w-0">
-              <p className="truncate font-medium">{doc.profiles?.name ?? "—"}</p>
+              <p className="truncate font-medium">{doc.studentName ?? "—"}</p>
               <p className="truncate text-[11px] text-muted-foreground">
-                {doc.profiles?.email} · Étape {doc.step} · <span className="font-medium">{doc.type}</span>
+                {doc.studentEmail} · Étape {doc.step} ·{" "}
+                <span className="font-medium">{doc.type}</span>
                 {doc.is_mandatory && <span className="ml-1 text-destructive">*</span>}
               </p>
             </div>
@@ -151,11 +175,7 @@ function DocRow({
           >
             <Check className="h-3.5 w-3.5" />
           </Button>
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={() => setRejecting((v) => !v)}
-          >
+          <Button size="sm" variant="destructive" onClick={() => setRejecting((v) => !v)}>
             <X className="h-3.5 w-3.5" />
           </Button>
         </div>

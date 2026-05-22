@@ -1,11 +1,10 @@
-// One-time bootstrap server route: seeds the first agency + admin user.
-// Refuses to run once any agency exists.
+// One-time bootstrap: seeds the Director account + a few demo universities.
+// Refuses to run once any director exists.
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { z } from "zod";
 
 const Schema = z.object({
-  agencyName: z.string().min(1).max(120),
   adminName: z.string().min(1).max(120),
   adminEmail: z.string().email().max(255),
   adminPassword: z.string().min(8).max(72),
@@ -19,21 +18,15 @@ export const Route = createFileRoute("/api/public/bootstrap")({
           const body = Schema.parse(await request.json());
 
           const { count } = await supabaseAdmin
-            .from("agencies")
-            .select("id", { count: "exact", head: true });
+            .from("user_roles")
+            .select("id", { count: "exact", head: true })
+            .eq("role", "director");
           if ((count ?? 0) > 0) {
-            return new Response(
-              JSON.stringify({ error: "Bootstrap already completed" }),
-              { status: 403, headers: { "Content-Type": "application/json" } },
-            );
+            return new Response(JSON.stringify({ error: "Bootstrap already completed" }), {
+              status: 403,
+              headers: { "Content-Type": "application/json" },
+            });
           }
-
-          const { data: agency, error: aErr } = await supabaseAdmin
-            .from("agencies")
-            .insert({ name: body.agencyName, primary_color: "#F5A623" })
-            .select()
-            .single();
-          if (aErr) throw aErr;
 
           const { data: created, error: cErr } = await supabaseAdmin.auth.admin.createUser({
             email: body.adminEmail,
@@ -45,19 +38,17 @@ export const Route = createFileRoute("/api/public/bootstrap")({
 
           await supabaseAdmin.from("profiles").insert({
             id: created.user.id,
-            agency_id: agency.id,
             name: body.adminName,
             email: body.adminEmail,
             must_change_password: false,
+            current_step: 0,
           });
           await supabaseAdmin
             .from("user_roles")
-            .insert({ user_id: created.user.id, role: "agency_admin" });
+            .insert({ user_id: created.user.id, role: "director" });
 
-          // Seed a couple of demo universities
           await supabaseAdmin.from("universities").insert([
             {
-              agency_id: agency.id,
               name: "Sorbonne Université",
               location: "Paris",
               country: "France",
@@ -66,7 +57,6 @@ export const Route = createFileRoute("/api/public/bootstrap")({
               badges: ["Top 50", "Bourse"],
             },
             {
-              agency_id: agency.id,
               name: "ETH Zürich",
               location: "Zürich",
               country: "Suisse",
@@ -75,7 +65,6 @@ export const Route = createFileRoute("/api/public/bootstrap")({
               badges: ["Top 10"],
             },
             {
-              agency_id: agency.id,
               name: "McGill University",
               location: "Montréal",
               country: "Canada",
@@ -85,11 +74,12 @@ export const Route = createFileRoute("/api/public/bootstrap")({
             },
           ]);
 
-          return new Response(JSON.stringify({ ok: true, agencyId: agency.id }), {
+          return new Response(JSON.stringify({ ok: true }), {
             headers: { "Content-Type": "application/json" },
           });
-        } catch (e: any) {
-          return new Response(JSON.stringify({ error: e.message ?? "Failed" }), {
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "Failed";
+          return new Response(JSON.stringify({ error: msg }), {
             status: 400,
             headers: { "Content-Type": "application/json" },
           });

@@ -62,15 +62,14 @@ export function Step1Info() {
 
   const submit = async () => {
     await save();
-    if (!user || !profile?.agency_id) return;
+    if (!user) return;
     await supabase
       .from("step_progress")
       .upsert(
         {
           user_id: user.id,
-          agency_id: profile.agency_id,
           step: 1,
-          status: "submitted",
+          status: "pending_review",
         },
         { onConflict: "user_id,step" },
       );

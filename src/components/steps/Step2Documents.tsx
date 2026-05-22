@@ -21,12 +21,20 @@ const OPTIONAL = [
   { type: "language_cert", label: "Certificat de langue" },
 ];
 
+type Doc = {
+  id: string;
+  type: string;
+  file_name: string;
+  status: "pending" | "approved" | "rejected";
+  feedback: string | null;
+};
+
 export function Step2Documents() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const qc = useQueryClient();
 
   const { data: docs = [] } = useQuery({
-    queryKey: ["documents", user?.id],
+    queryKey: ["documents", user?.id, 2],
     enabled: !!user,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -36,19 +44,18 @@ export function Step2Documents() {
         .eq("step", 2)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as Doc[];
     },
   });
 
   const submit = async () => {
-    if (!user || !profile?.agency_id) return;
-    // verify all mandatory uploaded
-    const haveAll = MANDATORY.every((m) => (docs as any[]).some((d) => d.type === m.type));
+    if (!user) return;
+    const haveAll = MANDATORY.every((m) => docs.some((d) => d.type === m.type));
     if (!haveAll) return toast.error("Téléversez tous les documents obligatoires");
     await supabase
       .from("step_progress")
       .upsert(
-        { user_id: user.id, agency_id: profile.agency_id, step: 2, status: "submitted" },
+        { user_id: user.id, step: 2, status: "pending_review" },
         { onConflict: "user_id,step" },
       );
     qc.invalidateQueries({ queryKey: ["step_progress"] });
@@ -57,8 +64,8 @@ export function Step2Documents() {
 
   return (
     <div className="space-y-5">
-      <Section title="Obligatoires" items={MANDATORY} docs={docs as any[]} mandatory />
-      <Section title="Optionnels" items={OPTIONAL} docs={docs as any[]} />
+      <Section title="Obligatoires" items={MANDATORY} docs={docs} mandatory />
+      <Section title="Optionnels" items={OPTIONAL} docs={docs} />
       <Button
         onClick={submit}
         className="w-full bg-gradient-gold text-primary-foreground shadow-gold"
@@ -77,7 +84,7 @@ function Section({
 }: {
   title: string;
   items: { type: string; label: string }[];
-  docs: any[];
+  docs: Doc[];
   mandatory?: boolean;
 }) {
   return (
@@ -86,18 +93,15 @@ function Section({
         {title}
       </h3>
       <div className="space-y-2">
-        {items.map((it) => {
-          const existing = docs.filter((d) => d.type === it.type);
-          return (
-            <DocSlot
-              key={it.type}
-              type={it.type}
-              label={it.label}
-              mandatory={mandatory}
-              existing={existing}
-            />
-          );
-        })}
+        {items.map((it) => (
+          <DocSlot
+            key={it.type}
+            type={it.type}
+            label={it.label}
+            mandatory={mandatory}
+            existing={docs.filter((d) => d.type === it.type)}
+          />
+        ))}
       </div>
     </div>
   );
@@ -112,15 +116,15 @@ function DocSlot({
   type: string;
   label: string;
   mandatory: boolean;
-  existing: any[];
+  existing: Doc[];
 }) {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const qc = useQueryClient();
   const ref = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
   const upload = async (file: File) => {
-    if (!user || !profile?.agency_id) return;
+    if (!user) return;
     setUploading(true);
     const path = `${user.id}/step-2/${type}-${Date.now()}-${file.name}`;
     const { error: upErr } = await supabase.storage.from("documents").upload(path, file);
@@ -131,7 +135,6 @@ function DocSlot({
     const { data: pub } = supabase.storage.from("documents").getPublicUrl(path);
     const { error } = await supabase.from("documents").insert({
       user_id: user.id,
-      agency_id: profile.agency_id,
       step: 2,
       type,
       file_url: pub.publicUrl,

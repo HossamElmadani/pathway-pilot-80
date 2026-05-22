@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 export function Step6Visa() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const qc = useQueryClient();
 
   const { data: prog } = useQuery({
@@ -27,16 +27,17 @@ export function Step6Visa() {
     },
   });
 
-  const [date, setDate] = useState<string>((prog?.data as any)?.appointment_date ?? "");
+  const [date, setDate] = useState<string>(
+    ((prog?.data as { appointment_date?: string } | undefined)?.appointment_date) ?? "",
+  );
 
   const saveDate = async () => {
-    if (!user || !profile?.agency_id) return;
+    if (!user) return;
     await supabase
       .from("step_progress")
       .upsert(
         {
           user_id: user.id,
-          agency_id: profile.agency_id,
           step: 6,
           status: "in_progress",
           data: { appointment_date: date },

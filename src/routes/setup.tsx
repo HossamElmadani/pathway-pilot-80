@@ -13,12 +13,7 @@ export const Route = createFileRoute("/setup")({
 
 function SetupPage() {
   const navigate = useNavigate();
-  const [f, setF] = useState({
-    agencyName: "EduGlobal Consulting",
-    adminName: "Admin",
-    adminEmail: "",
-    adminPassword: "",
-  });
+  const [f, setF] = useState({ adminName: "Director", adminEmail: "", adminPassword: "" });
   const [loading, setLoading] = useState(false);
 
   const submit = async (e: FormEvent) => {
@@ -48,24 +43,19 @@ function SetupPage() {
             <div className="mb-3 rounded-2xl bg-gradient-gold p-3 shadow-gold">
               <Sparkles className="h-6 w-6 text-primary-foreground" />
             </div>
-            <h1 className="font-display text-2xl font-semibold">Bienvenue</h1>
+            <h1 className="font-display text-2xl font-semibold">Configuration initiale</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Configurez votre première agence et compte administrateur. Cette page n'est
-              disponible qu'une seule fois.
+              Créez le compte Directeur. Cette page n'est disponible qu'une seule fois.
             </p>
           </div>
           <Card className="border-border/60 bg-card/80 p-6 shadow-elevated">
             <form onSubmit={submit} className="space-y-4">
               <div className="space-y-1.5">
-                <Label>Nom de l'agence</Label>
-                <Input value={f.agencyName} onChange={(e) => setF({ ...f, agencyName: e.target.value })} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Votre nom</Label>
+                <Label>Nom du directeur</Label>
                 <Input value={f.adminName} onChange={(e) => setF({ ...f, adminName: e.target.value })} />
               </div>
               <div className="space-y-1.5">
-                <Label>Email administrateur</Label>
+                <Label>Email</Label>
                 <Input
                   type="email"
                   value={f.adminEmail}
@@ -89,7 +79,7 @@ function SetupPage() {
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <>
-                    <GraduationCap className="mr-2 h-4 w-4" /> Créer l'agence
+                    <GraduationCap className="mr-2 h-4 w-4" /> Créer le Directeur
                   </>
                 )}
               </Button>

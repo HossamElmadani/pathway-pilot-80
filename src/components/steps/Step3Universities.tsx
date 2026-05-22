@@ -11,17 +11,15 @@ import { cn } from "@/lib/utils";
 const MAX = 5;
 
 export function Step3Universities() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const qc = useQueryClient();
 
   const { data: universities = [] } = useQuery({
-    queryKey: ["universities", profile?.agency_id],
-    enabled: !!profile?.agency_id,
+    queryKey: ["universities"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("universities")
         .select("*")
-        .eq("agency_id", profile!.agency_id!)
         .order("ranking", { ascending: true, nullsFirst: false });
       if (error) throw error;
       return data ?? [];
@@ -41,28 +39,30 @@ export function Step3Universities() {
     },
   });
 
-  const selectedIds = new Set((apps as any[]).map((a) => a.university_id));
+  const selectedIds = new Set(apps.map((a) => a.university_id));
 
   const toggle = async (uniId: string) => {
-    if (!user || !profile?.agency_id) return;
+    if (!user) return;
     if (selectedIds.has(uniId)) {
-      await supabase.from("applications").delete().eq("user_id", user.id).eq("university_id", uniId);
-    } else {
-      if (selectedIds.size >= MAX) return toast.error(`Max ${MAX} universités`);
       await supabase
         .from("applications")
-        .insert({ user_id: user.id, agency_id: profile.agency_id, university_id: uniId });
+        .delete()
+        .eq("user_id", user.id)
+        .eq("university_id", uniId);
+    } else {
+      if (selectedIds.size >= MAX) return toast.error(`Max ${MAX} universités`);
+      await supabase.from("applications").insert({ user_id: user.id, university_id: uniId });
     }
     qc.invalidateQueries({ queryKey: ["applications"] });
   };
 
   const submit = async () => {
-    if (!user || !profile?.agency_id) return;
+    if (!user) return;
     if (selectedIds.size === 0) return toast.error("Sélectionnez au moins une université");
     await supabase
       .from("step_progress")
       .upsert(
-        { user_id: user.id, agency_id: profile.agency_id, step: 3, status: "submitted" },
+        { user_id: user.id, step: 3, status: "pending_review" },
         { onConflict: "user_id,step" },
       );
     qc.invalidateQueries({ queryKey: ["step_progress"] });
@@ -73,16 +73,18 @@ export function Step3Universities() {
     <div className="space-y-3">
       <div className="flex items-center justify-between rounded-xl border border-border bg-card px-3 py-2 text-xs">
         <span className="text-muted-foreground">Max. 5 universités</span>
-        <span className="font-semibold text-primary">{selectedIds.size} / {MAX}</span>
+        <span className="font-semibold text-primary">
+          {selectedIds.size} / {MAX}
+        </span>
       </div>
 
-      {(universities as any[]).length === 0 && (
+      {universities.length === 0 && (
         <Card className="border-border bg-card p-6 text-center text-sm text-muted-foreground">
-          Votre agence n'a pas encore ajouté d'universités.
+          Aucune université n'a encore été ajoutée.
         </Card>
       )}
 
-      {(universities as any[]).map((u) => {
+      {universities.map((u) => {
         const selected = selectedIds.has(u.id);
         return (
           <Card
@@ -94,9 +96,7 @@ export function Step3Universities() {
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <h3 className="font-display text-base font-semibold text-foreground">
-                  {u.name}
-                </h3>
+                <h3 className="font-display text-base font-semibold text-foreground">{u.name}</h3>
                 <p className="mt-0.5 inline-flex items-center gap-1 text-xs text-muted-foreground">
                   <MapPin className="h-3 w-3" /> {u.location}
                   {u.country ? ` · ${u.country}` : ""}

@@ -14,31 +14,60 @@ import {
   useDroppable,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { GripVertical } from "lucide-react";
+import { GripVertical, UserCog } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { setStudentStep } from "@/lib/agency.functions";
+import { setStudentStep, reassignStudent } from "@/lib/agency.functions";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const Route = createFileRoute("/_authenticated/admin/students")({
   component: StudentsKanban,
 });
 
 function StudentsKanban() {
-  const { agency } = useAuth();
+  const { user, isDirector } = useAuth();
   const { t } = useI18n();
   const qc = useQueryClient();
   const setStep = useServerFn(setStudentStep);
+  const reassign = useServerFn(reassignStudent);
 
   const { data: students = [] } = useQuery({
-    queryKey: ["agency-students", agency?.id],
-    enabled: !!agency,
+    queryKey: ["staff-students", user?.id, isDirector],
+    enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("profiles")
-        .select("id,name,email,current_step,avatar_url")
-        .eq("agency_id", agency!.id)
-        .order("created_at", { ascending: false });
+        .select("id,name,email,current_step,avatar_url,assigned_worker_id");
+      if (!isDirector) q = q.eq("assigned_worker_id", user!.id);
+      const { data, error } = await q.order("created_at", { ascending: false });
       if (error) throw error;
+      // exclude staff (those without 'student' role) — fetch student ids
+      const { data: roleRows } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "student");
+      const studentIds = new Set((roleRows ?? []).map((r) => r.user_id));
+      return (data ?? []).filter((p) => studentIds.has(p.id));
+    },
+  });
+
+  const { data: workers = [] } = useQuery({
+    queryKey: ["all-workers"],
+    enabled: isDirector,
+    queryFn: async () => {
+      const { data: roleRows } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "worker");
+      const ids = (roleRows ?? []).map((r) => r.user_id);
+      if (ids.length === 0) return [];
+      const { data } = await supabase.from("profiles").select("id,name").in("id", ids);
       return data ?? [];
     },
   });
@@ -52,9 +81,21 @@ function StudentsKanban() {
     if (!Number.isFinite(newStep)) return;
     try {
       await setStep({ data: { studentId, step: newStep } });
-      qc.invalidateQueries({ queryKey: ["agency-students"] });
-    } catch (err: any) {
-      toast.error(err.message ?? "Failed");
+      qc.invalidateQueries({ queryKey: ["staff-students"] });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed");
+    }
+  };
+
+  const onReassign = async (studentId: string, workerId: string) => {
+    try {
+      await reassign({
+        data: { studentId, workerId: workerId === "__unassigned__" ? null : workerId },
+      });
+      toast.success("Réassigné");
+      qc.invalidateQueries({ queryKey: ["staff-students"] });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed");
     }
   };
 
@@ -64,7 +105,9 @@ function StudentsKanban() {
         <p className="text-xs uppercase tracking-wider text-muted-foreground">CRM</p>
         <h1 className="mt-1 font-display text-3xl font-semibold">{t("crm.students")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Glissez-déposez pour déplacer un étudiant dans le pipeline.
+          {isDirector
+            ? "Pipeline global — glissez pour déplacer entre étapes."
+            : "Vos étudiants assignés."}
         </p>
       </div>
 
@@ -72,8 +115,17 @@ function StudentsKanban() {
         <div className="scrollbar-thin overflow-x-auto">
           <div className="flex gap-3 pb-4" style={{ minWidth: "max-content" }}>
             {STEPS.map((s) => {
-              const col = (students as any[]).filter((st) => (st.current_step ?? 1) === s);
-              return <Column key={s} step={s} title={t(STEP_KEYS[s])} students={col} />;
+              const col = students.filter((st) => (st.current_step ?? 1) === s);
+              return (
+                <Column
+                  key={s}
+                  step={s}
+                  title={t(STEP_KEYS[s])}
+                  students={col}
+                  workers={isDirector ? workers : []}
+                  onReassign={onReassign}
+                />
+              );
             })}
           </div>
         </div>
@@ -82,7 +134,27 @@ function StudentsKanban() {
   );
 }
 
-function Column({ step, title, students }: { step: number; title: string; students: any[] }) {
+type Student = {
+  id: string;
+  name: string;
+  email: string;
+  current_step: number;
+  assigned_worker_id: string | null;
+};
+
+function Column({
+  step,
+  title,
+  students,
+  workers,
+  onReassign,
+}: {
+  step: number;
+  title: string;
+  students: Student[];
+  workers: { id: string; name: string }[];
+  onReassign: (sid: string, wid: string) => void;
+}) {
   const { setNodeRef, isOver } = useDroppable({ id: String(step) });
   return (
     <div
@@ -100,7 +172,7 @@ function Column({ step, title, students }: { step: number; title: string; studen
       </div>
       <div className="space-y-2">
         {students.map((s) => (
-          <StudentCard key={s.id} student={s} />
+          <StudentCard key={s.id} student={s} workers={workers} onReassign={onReassign} />
         ))}
         {students.length === 0 && (
           <div className="rounded-xl border border-dashed border-border/60 p-4 text-center text-[11px] text-muted-foreground">
@@ -112,7 +184,15 @@ function Column({ step, title, students }: { step: number; title: string; studen
   );
 }
 
-function StudentCard({ student }: { student: any }) {
+function StudentCard({
+  student,
+  workers,
+  onReassign,
+}: {
+  student: Student;
+  workers: { id: string; name: string }[];
+  onReassign: (sid: string, wid: string) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: student.id,
   });
@@ -123,18 +203,45 @@ function StudentCard({ student }: { student: any }) {
     <Card
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-2 border-border bg-card p-3 ${isDragging ? "opacity-50 shadow-elevated" : ""}`}
+      className={`space-y-2 border-border bg-card p-3 ${isDragging ? "opacity-50 shadow-elevated" : ""}`}
     >
-      <button {...attributes} {...listeners} className="cursor-grab touch-none text-muted-foreground">
-        <GripVertical className="h-4 w-4" />
-      </button>
-      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-gold text-xs font-bold text-primary-foreground">
-        {student.name?.[0]?.toUpperCase() ?? "?"}
+      <div className="flex items-center gap-2">
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab touch-none text-muted-foreground"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-gold text-xs font-bold text-primary-foreground">
+          {student.name?.[0]?.toUpperCase() ?? "?"}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium">{student.name}</p>
+          <p className="truncate text-[10px] text-muted-foreground">{student.email}</p>
+        </div>
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{student.name}</p>
-        <p className="truncate text-[10px] text-muted-foreground">{student.email}</p>
-      </div>
+      {workers.length > 0 && (
+        <div className="flex items-center gap-1.5">
+          <UserCog className="h-3 w-3 text-muted-foreground" />
+          <Select
+            value={student.assigned_worker_id ?? "__unassigned__"}
+            onValueChange={(v) => onReassign(student.id, v)}
+          >
+            <SelectTrigger className="h-7 text-[11px]">
+              <SelectValue placeholder="Assigner…" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__unassigned__">Non assigné</SelectItem>
+              {workers.map((w) => (
+                <SelectItem key={w.id} value={w.id}>
+                  {w.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
     </Card>
   );
 }

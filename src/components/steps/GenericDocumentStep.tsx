@@ -24,7 +24,7 @@ export function GenericDocumentStep({
   title: string;
   slots: Slot[];
 }) {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const qc = useQueryClient();
 
   const { data: docs = [] } = useQuery({
@@ -42,15 +42,15 @@ export function GenericDocumentStep({
   });
 
   const submit = async () => {
-    if (!user || !profile?.agency_id) return;
+    if (!user) return;
     const haveAll = slots
       .filter((s) => s.mandatory)
-      .every((m) => (docs as any[]).some((d) => d.type === m.type));
+      .every((m) => docs.some((d) => d.type === m.type));
     if (!haveAll) return toast.error("Téléversez tous les documents obligatoires");
     await supabase
       .from("step_progress")
       .upsert(
-        { user_id: user.id, agency_id: profile.agency_id, step, status: "submitted" },
+        { user_id: user.id, step, status: "pending_review" },
         { onConflict: "user_id,step" },
       );
     qc.invalidateQueries({ queryKey: ["step_progress"] });
@@ -69,7 +69,7 @@ export function GenericDocumentStep({
           type={s.type}
           label={s.label}
           mandatory={s.mandatory}
-          existing={(docs as any[]).filter((d) => d.type === s.type)}
+          existing={docs.filter((d) => d.type === s.type)}
         />
       ))}
       <Button onClick={submit} className="w-full bg-gradient-gold text-primary-foreground shadow-gold">
@@ -78,6 +78,14 @@ export function GenericDocumentStep({
     </div>
   );
 }
+
+type Doc = {
+  id: string;
+  type: string;
+  file_name: string;
+  status: "pending" | "approved" | "rejected";
+  feedback: string | null;
+};
 
 function DocSlot({
   step,
@@ -90,15 +98,15 @@ function DocSlot({
   type: string;
   label: string;
   mandatory: boolean;
-  existing: any[];
+  existing: Doc[];
 }) {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const qc = useQueryClient();
   const ref = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
   const upload = async (file: File) => {
-    if (!user || !profile?.agency_id) return;
+    if (!user) return;
     setUploading(true);
     const path = `${user.id}/step-${step}/${type}-${Date.now()}-${file.name}`;
     const { error: upErr } = await supabase.storage.from("documents").upload(path, file);
@@ -109,7 +117,6 @@ function DocSlot({
     const { data: pub } = supabase.storage.from("documents").getPublicUrl(path);
     const { error } = await supabase.from("documents").insert({
       user_id: user.id,
-      agency_id: profile.agency_id,
       step,
       type,
       file_url: pub.publicUrl,

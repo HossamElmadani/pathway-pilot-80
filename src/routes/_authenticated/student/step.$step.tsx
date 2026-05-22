@@ -24,7 +24,7 @@ function StepPage() {
   const stepNum = Number(step) as Step;
   const navigate = useNavigate();
   const { t } = useI18n();
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const qc = useQueryClient();
 
   const { data: rows = [], isLoading } = useQuery({
@@ -45,7 +45,7 @@ function StepPage() {
 
   // Ensure a step_progress row exists when entering an unlocked step
   useEffect(() => {
-    if (!user || !profile?.agency_id) return;
+    if (!user) return;
     if (status === "locked") return;
     const exists = (rows as any[]).find((r) => r.step === stepNum);
     if (!exists) {
@@ -53,13 +53,12 @@ function StepPage() {
         .from("step_progress")
         .insert({
           user_id: user.id,
-          agency_id: profile.agency_id,
           step: stepNum,
           status: "in_progress",
         })
         .then(() => qc.invalidateQueries({ queryKey: ["step_progress"] }));
     }
-  }, [user, profile, rows, status, stepNum, qc]);
+  }, [user, rows, status, stepNum, qc]);
 
   if (stepNum < 1 || stepNum > 7) {
     return (

@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { Plane } from "lucide-react";
 
 export function Step7Departure() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const qc = useQueryClient();
 
   const { data: prog } = useQuery({
@@ -28,7 +28,7 @@ export function Step7Departure() {
     },
   });
 
-  const init = (prog?.data as any) ?? {};
+  const init = (prog?.data as Record<string, string> | undefined) ?? {};
   const [f, setF] = useState({
     airline: init.airline ?? "",
     flight_number: init.flight_number ?? "",
@@ -39,15 +39,14 @@ export function Step7Departure() {
   });
 
   const save = async (submitting = false) => {
-    if (!user || !profile?.agency_id) return;
+    if (!user) return;
     await supabase
       .from("step_progress")
       .upsert(
         {
           user_id: user.id,
-          agency_id: profile.agency_id,
           step: 7,
-          status: submitting ? "submitted" : "in_progress",
+          status: submitting ? "pending_review" : "in_progress",
           data: f,
         },
         { onConflict: "user_id,step" },
@@ -66,15 +65,29 @@ export function Step7Departure() {
         <div className="space-y-3">
           <Row label="Compagnie aérienne" value={f.airline} on={(v) => setF({ ...f, airline: v })} />
           <Row label="N° de vol" value={f.flight_number} on={(v) => setF({ ...f, flight_number: v })} />
-          <Row label="Date de départ" type="datetime-local" value={f.departure} on={(v) => setF({ ...f, departure: v })} />
-          <Row label="Date d'arrivée" type="datetime-local" value={f.arrival} on={(v) => setF({ ...f, arrival: v })} />
+          <Row
+            label="Date de départ"
+            type="datetime-local"
+            value={f.departure}
+            on={(v) => setF({ ...f, departure: v })}
+          />
+          <Row
+            label="Date d'arrivée"
+            type="datetime-local"
+            value={f.arrival}
+            on={(v) => setF({ ...f, arrival: v })}
+          />
         </div>
       </Card>
 
       <Card className="border-border bg-card p-4">
         <Label className="text-sm font-semibold">Logistique d'arrivée</Label>
         <div className="mt-3 space-y-3">
-          <Row label="Personne / service de récupération" value={f.pickup} on={(v) => setF({ ...f, pickup: v })} />
+          <Row
+            label="Personne / service de récupération"
+            value={f.pickup}
+            on={(v) => setF({ ...f, pickup: v })}
+          />
           <div className="space-y-1.5">
             <Label>Notes</Label>
             <Textarea value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} />
@@ -86,7 +99,10 @@ export function Step7Departure() {
         <Button variant="outline" onClick={() => save(false)} className="flex-1">
           Enregistrer
         </Button>
-        <Button onClick={() => save(true)} className="flex-1 bg-gradient-gold text-primary-foreground shadow-gold">
+        <Button
+          onClick={() => save(true)}
+          className="flex-1 bg-gradient-gold text-primary-foreground shadow-gold"
+        >
           Finaliser
         </Button>
       </div>
@@ -94,7 +110,17 @@ export function Step7Departure() {
   );
 }
 
-function Row({ label, value, on, type = "text" }: { label: string; value: string; on: (v: string) => void; type?: string }) {
+function Row({
+  label,
+  value,
+  on,
+  type = "text",
+}: {
+  label: string;
+  value: string;
+  on: (v: string) => void;
+  type?: string;
+}) {
   return (
     <div className="space-y-1.5">
       <Label>{label}</Label>
