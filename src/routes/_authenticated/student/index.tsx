@@ -12,7 +12,7 @@ export const Route = createFileRoute("/_authenticated/student/")({
 });
 
 function StudentHome() {
-  const { user, profile, agency } = useAuth();
+  const { user, profile } = useAuth();
   const { t } = useI18n();
 
   const { data: rows = [] } = useQuery({
@@ -36,7 +36,7 @@ function StudentHome() {
       {/* Header */}
       <div className="mb-6">
         <p className="text-xs uppercase tracking-wider text-muted-foreground">
-          {agency?.name ?? t("app.name")}
+          {t("app.name")}
         </p>
         <h1 className="mt-1 font-display text-2xl font-semibold text-foreground">
           {t("home.greeting")}, {profile?.name?.split(" ")[0] ?? "👋"}
