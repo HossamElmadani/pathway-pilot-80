@@ -15,6 +15,9 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as WorkerDashboardRouteImport } from './routes/worker/dashboard'
+import { Route as StudentPortalRouteImport } from './routes/student/portal'
+import { Route as DirectorDashboardRouteImport } from './routes/director/dashboard'
 import { Route as AuthenticatedStudentRouteImport } from './routes/_authenticated/student'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedStudentIndexRouteImport } from './routes/_authenticated/student/index'
@@ -25,6 +28,7 @@ import { Route as AuthenticatedStudentMenuRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAdminValidationRouteImport } from './routes/_authenticated/admin/validation'
 import { Route as AuthenticatedAdminUniversitiesRouteImport } from './routes/_authenticated/admin/universities'
 import { Route as AuthenticatedAdminStudentsRouteImport } from './routes/_authenticated/admin/students'
+import { Route as AuthenticatedAdminPasswordsRouteImport } from './routes/_authenticated/admin/passwords'
 import { Route as AuthenticatedAdminInviteRouteImport } from './routes/_authenticated/admin/invite'
 import { Route as AuthenticatedAdminBrandingRouteImport } from './routes/_authenticated/admin/branding'
 import { Route as AuthenticatedStudentStepStepRouteImport } from './routes/_authenticated/student/step.$step'
@@ -56,6 +60,21 @@ const AuthenticatedRoute = AuthenticatedRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WorkerDashboardRoute = WorkerDashboardRouteImport.update({
+  id: '/worker/dashboard',
+  path: '/worker/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StudentPortalRoute = StudentPortalRouteImport.update({
+  id: '/student/portal',
+  path: '/student/portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DirectorDashboardRoute = DirectorDashboardRouteImport.update({
+  id: '/director/dashboard',
+  path: '/director/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedStudentRoute = AuthenticatedStudentRouteImport.update({
@@ -114,6 +133,12 @@ const AuthenticatedAdminStudentsRoute =
     path: '/students',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminPasswordsRoute =
+  AuthenticatedAdminPasswordsRouteImport.update({
+    id: '/passwords',
+    path: '/passwords',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminInviteRoute =
   AuthenticatedAdminInviteRouteImport.update({
     id: '/invite',
@@ -141,8 +166,12 @@ export interface FileRoutesByFullPath {
   '/test-db': typeof TestDbRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/student': typeof AuthenticatedStudentRouteWithChildren
+  '/director/dashboard': typeof DirectorDashboardRoute
+  '/student/portal': typeof StudentPortalRoute
+  '/worker/dashboard': typeof WorkerDashboardRoute
   '/admin/branding': typeof AuthenticatedAdminBrandingRoute
   '/admin/invite': typeof AuthenticatedAdminInviteRoute
+  '/admin/passwords': typeof AuthenticatedAdminPasswordsRoute
   '/admin/students': typeof AuthenticatedAdminStudentsRoute
   '/admin/universities': typeof AuthenticatedAdminUniversitiesRoute
   '/admin/validation': typeof AuthenticatedAdminValidationRoute
@@ -159,8 +188,12 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/setup': typeof SetupRoute
   '/test-db': typeof TestDbRoute
+  '/director/dashboard': typeof DirectorDashboardRoute
+  '/student/portal': typeof StudentPortalRoute
+  '/worker/dashboard': typeof WorkerDashboardRoute
   '/admin/branding': typeof AuthenticatedAdminBrandingRoute
   '/admin/invite': typeof AuthenticatedAdminInviteRoute
+  '/admin/passwords': typeof AuthenticatedAdminPasswordsRoute
   '/admin/students': typeof AuthenticatedAdminStudentsRoute
   '/admin/universities': typeof AuthenticatedAdminUniversitiesRoute
   '/admin/validation': typeof AuthenticatedAdminValidationRoute
@@ -181,8 +214,12 @@ export interface FileRoutesById {
   '/test-db': typeof TestDbRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/student': typeof AuthenticatedStudentRouteWithChildren
+  '/director/dashboard': typeof DirectorDashboardRoute
+  '/student/portal': typeof StudentPortalRoute
+  '/worker/dashboard': typeof WorkerDashboardRoute
   '/_authenticated/admin/branding': typeof AuthenticatedAdminBrandingRoute
   '/_authenticated/admin/invite': typeof AuthenticatedAdminInviteRoute
+  '/_authenticated/admin/passwords': typeof AuthenticatedAdminPasswordsRoute
   '/_authenticated/admin/students': typeof AuthenticatedAdminStudentsRoute
   '/_authenticated/admin/universities': typeof AuthenticatedAdminUniversitiesRoute
   '/_authenticated/admin/validation': typeof AuthenticatedAdminValidationRoute
@@ -203,8 +240,12 @@ export interface FileRouteTypes {
     | '/test-db'
     | '/admin'
     | '/student'
+    | '/director/dashboard'
+    | '/student/portal'
+    | '/worker/dashboard'
     | '/admin/branding'
     | '/admin/invite'
+    | '/admin/passwords'
     | '/admin/students'
     | '/admin/universities'
     | '/admin/validation'
@@ -221,8 +262,12 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/setup'
     | '/test-db'
+    | '/director/dashboard'
+    | '/student/portal'
+    | '/worker/dashboard'
     | '/admin/branding'
     | '/admin/invite'
+    | '/admin/passwords'
     | '/admin/students'
     | '/admin/universities'
     | '/admin/validation'
@@ -242,8 +287,12 @@ export interface FileRouteTypes {
     | '/test-db'
     | '/_authenticated/admin'
     | '/_authenticated/student'
+    | '/director/dashboard'
+    | '/student/portal'
+    | '/worker/dashboard'
     | '/_authenticated/admin/branding'
     | '/_authenticated/admin/invite'
+    | '/_authenticated/admin/passwords'
     | '/_authenticated/admin/students'
     | '/_authenticated/admin/universities'
     | '/_authenticated/admin/validation'
@@ -262,6 +311,9 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SetupRoute: typeof SetupRoute
   TestDbRoute: typeof TestDbRoute
+  DirectorDashboardRoute: typeof DirectorDashboardRoute
+  StudentPortalRoute: typeof StudentPortalRoute
+  WorkerDashboardRoute: typeof WorkerDashboardRoute
   ApiPublicBootstrapRoute: typeof ApiPublicBootstrapRoute
 }
 
@@ -307,6 +359,27 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/worker/dashboard': {
+      id: '/worker/dashboard'
+      path: '/worker/dashboard'
+      fullPath: '/worker/dashboard'
+      preLoaderRoute: typeof WorkerDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/student/portal': {
+      id: '/student/portal'
+      path: '/student/portal'
+      fullPath: '/student/portal'
+      preLoaderRoute: typeof StudentPortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/director/dashboard': {
+      id: '/director/dashboard'
+      path: '/director/dashboard'
+      fullPath: '/director/dashboard'
+      preLoaderRoute: typeof DirectorDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/student': {
@@ -379,6 +452,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminStudentsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/passwords': {
+      id: '/_authenticated/admin/passwords'
+      path: '/passwords'
+      fullPath: '/admin/passwords'
+      preLoaderRoute: typeof AuthenticatedAdminPasswordsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/invite': {
       id: '/_authenticated/admin/invite'
       path: '/invite'
@@ -406,6 +486,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminBrandingRoute: typeof AuthenticatedAdminBrandingRoute
   AuthenticatedAdminInviteRoute: typeof AuthenticatedAdminInviteRoute
+  AuthenticatedAdminPasswordsRoute: typeof AuthenticatedAdminPasswordsRoute
   AuthenticatedAdminStudentsRoute: typeof AuthenticatedAdminStudentsRoute
   AuthenticatedAdminUniversitiesRoute: typeof AuthenticatedAdminUniversitiesRoute
   AuthenticatedAdminValidationRoute: typeof AuthenticatedAdminValidationRoute
@@ -415,6 +496,7 @@ interface AuthenticatedAdminRouteChildren {
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminBrandingRoute: AuthenticatedAdminBrandingRoute,
   AuthenticatedAdminInviteRoute: AuthenticatedAdminInviteRoute,
+  AuthenticatedAdminPasswordsRoute: AuthenticatedAdminPasswordsRoute,
   AuthenticatedAdminStudentsRoute: AuthenticatedAdminStudentsRoute,
   AuthenticatedAdminUniversitiesRoute: AuthenticatedAdminUniversitiesRoute,
   AuthenticatedAdminValidationRoute: AuthenticatedAdminValidationRoute,
@@ -463,6 +545,9 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SetupRoute: SetupRoute,
   TestDbRoute: TestDbRoute,
+  DirectorDashboardRoute: DirectorDashboardRoute,
+  StudentPortalRoute: StudentPortalRoute,
+  WorkerDashboardRoute: WorkerDashboardRoute,
   ApiPublicBootstrapRoute: ApiPublicBootstrapRoute,
 }
 export const routeTree = rootRouteImport

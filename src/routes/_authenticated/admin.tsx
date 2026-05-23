@@ -10,6 +10,7 @@ import {
   LogOut,
   GraduationCap,
   Shield,
+  KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ function AdminLayout() {
     { to: "/admin/validation", icon: CheckSquare, label: t("crm.validation") },
     { to: "/admin/universities", icon: Building2, label: t("crm.universities") },
     { to: "/admin/invite", icon: UserPlus, label: t("crm.invite") },
+    { to: "/admin/passwords", icon: KeyRound, label: "Mots de passe" },
   ];
 
   return (

@@ -9,7 +9,7 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const navigate = useNavigate();
-  const { loading, isAuthenticated, isStaff, isStudent, profile } = useAuth();
+  const { loading, isAuthenticated, isDirector, isWorker, isStudent, profile } = useAuth();
 
   useEffect(() => {
     if (loading) return;
@@ -21,10 +21,11 @@ function Index() {
       navigate({ to: "/reset-password" });
       return;
     }
-    if (isStaff) navigate({ to: "/admin" });
-    else if (isStudent) navigate({ to: "/student" });
+    if (isDirector) navigate({ to: "/director/dashboard" });
+    else if (isWorker) navigate({ to: "/worker/dashboard" });
+    else if (isStudent) navigate({ to: "/student/portal" });
     else navigate({ to: "/login" });
-  }, [loading, isAuthenticated, isStaff, isStudent, profile, navigate]);
+  }, [loading, isAuthenticated, isDirector, isWorker, isStudent, profile, navigate]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">

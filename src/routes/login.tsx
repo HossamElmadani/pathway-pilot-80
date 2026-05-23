@@ -17,7 +17,7 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const { t, lang, setLang } = useI18n();
   const navigate = useNavigate();
-  const { isAuthenticated, loading: authLoading, profile, isStaff } = useAuth();
+  const { isAuthenticated, loading: authLoading, profile, isDirector, isWorker, isStudent } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -26,9 +26,11 @@ function LoginPage() {
     if (authLoading) return;
     if (isAuthenticated) {
       if (profile?.must_change_password) navigate({ to: "/reset-password" });
-      else navigate({ to: isStaff ? "/admin" : "/student" });
+      else if (isDirector) navigate({ to: "/director/dashboard" });
+      else if (isWorker) navigate({ to: "/worker/dashboard" });
+      else if (isStudent) navigate({ to: "/student/portal" });
     }
-  }, [authLoading, isAuthenticated, profile, isStaff, navigate]);
+  }, [authLoading, isAuthenticated, profile, isDirector, isWorker, isStudent, navigate]);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();

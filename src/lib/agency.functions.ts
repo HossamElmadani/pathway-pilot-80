@@ -223,3 +223,60 @@ export const approveStep = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// Director: change any user's password (incl. self, workers, students).
+// Worker: change password only for their assigned students.
+// Students: forbidden.
+export const setUserPassword = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        userId: z.string().uuid(),
+        password: z.string().min(8).max(72),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const callerId = context.userId;
+    const callerRoles = await getRoles(callerId);
+    const isDirector = callerRoles.includes("director");
+    const isWorker = callerRoles.includes("worker");
+    if (!isDirector && !isWorker) throw new Error("Forbidden");
+
+    if (!isDirector) {
+      // Worker: must be changing an assigned student's password.
+      const { data: target } = await supabaseAdmin
+        .from("profiles")
+        .select("assigned_worker_id")
+        .eq("id", data.userId)
+        .maybeSingle();
+      if (!target || target.assigned_worker_id !== callerId) {
+        throw new Error("You can only change passwords for your assigned students");
+      }
+      const targetRoles = await getRoles(data.userId);
+      if (!targetRoles.includes("student")) {
+        throw new Error("Workers can only change student passwords");
+      }
+    }
+
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
+      password: data.password,
+    });
+    if (error) throw new Error(error.message);
+
+    // If admin is changing someone else's password, force them to change it on next login.
+    if (data.userId !== callerId) {
+      await supabaseAdmin
+        .from("profiles")
+        .update({ must_change_password: true })
+        .eq("id", data.userId);
+    } else {
+      await supabaseAdmin
+        .from("profiles")
+        .update({ must_change_password: false })
+        .eq("id", data.userId);
+    }
+
+    return { ok: true };
+  });
