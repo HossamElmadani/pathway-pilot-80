@@ -185,6 +185,26 @@ export const approveDocument = createServerFn({ method: "POST" })
         },
         { onConflict: "user_id,step" },
       );
+      // Advance the student's current_step pointer to the next step (cap at 7).
+      const nextStep = Math.min(doc.step + 1, 7);
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("current_step")
+        .eq("id", doc.user_id)
+        .maybeSingle();
+      if (prof && prof.current_step < nextStep) {
+        await supabase
+          .from("profiles")
+          .update({ current_step: nextStep })
+          .eq("id", doc.user_id);
+      }
+      // Seed step_progress row for the newly unlocked step so it shows in_progress.
+      await supabase
+        .from("step_progress")
+        .upsert(
+          { user_id: doc.user_id, step: nextStep, status: "in_progress" },
+          { onConflict: "user_id,step", ignoreDuplicates: true },
+        );
     }
     return { ok: true };
   });
