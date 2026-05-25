@@ -6,6 +6,7 @@ import { useI18n } from "@/lib/i18n";
 import { buildStepMap, progressPct, STEPS, STEP_KEYS } from "@/lib/steps";
 import { Check, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_authenticated/student/")({
   component: StudentHome,
@@ -15,7 +16,7 @@ function StudentHome() {
   const { user, profile } = useAuth();
   const { t } = useI18n();
 
-  const { data: rows = [] } = useQuery({
+  const { data: rows = [], isLoading } = useQuery({
     queryKey: ["step_progress", user?.id],
     enabled: !!user,
     queryFn: async () => {
@@ -30,6 +31,8 @@ function StudentHome() {
 
   const stepMap = buildStepMap(rows as { step: number; status: any }[]);
   const { done, total, pct } = progressPct(stepMap);
+
+  if (isLoading) return <RoadmapSkeleton />;
 
   return (
     <div className="px-5 pt-8">
@@ -105,6 +108,24 @@ function StudentHome() {
             );
           })}
         </ul>
+      </div>
+    </div>
+  );
+}
+
+function RoadmapSkeleton() {
+  return (
+    <div className="px-5 pt-8">
+      <Skeleton className="h-3 w-24" />
+      <Skeleton className="mt-2 h-7 w-48" />
+      <Skeleton className="mt-5 h-20 w-full rounded-2xl" />
+      <div className="mt-8 space-y-5">
+        {Array.from({ length: 7 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-4 pl-5">
+            <Skeleton className="h-10 w-10 rounded-full" />
+            <Skeleton className="h-20 flex-1 rounded-2xl" />
+          </div>
+        ))}
       </div>
     </div>
   );

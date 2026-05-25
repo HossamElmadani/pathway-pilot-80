@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth-context";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, Check, X, Clock, Trash2 } from "lucide-react";
+import { Upload, FileText, Check, X, Clock, Trash2, Loader2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -26,6 +26,7 @@ export function GenericDocumentStep({
 }) {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const [submitting, setSubmitting] = useState(false);
 
   const { data: docs = [] } = useQuery({
     queryKey: ["documents", user?.id, step],
@@ -47,14 +48,22 @@ export function GenericDocumentStep({
       .filter((s) => s.mandatory)
       .every((m) => docs.some((d) => d.type === m.type));
     if (!haveAll) return toast.error("Téléversez tous les documents obligatoires");
-    await supabase
-      .from("step_progress")
-      .upsert(
-        { user_id: user.id, step, status: "pending_review" },
-        { onConflict: "user_id,step" },
-      );
-    qc.invalidateQueries({ queryKey: ["step_progress"] });
-    toast.success("Soumis pour validation");
+    setSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from("step_progress")
+        .upsert(
+          { user_id: user.id, step, status: "pending_review" },
+          { onConflict: "user_id,step" },
+        );
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ["step_progress"] });
+      toast.success("Soumis pour validation");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Échec");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -72,8 +81,16 @@ export function GenericDocumentStep({
           existing={docs.filter((d) => d.type === s.type)}
         />
       ))}
-      <Button onClick={submit} className="w-full bg-gradient-gold text-primary-foreground shadow-gold">
-        Soumettre pour validation
+      <Button
+        onClick={submit}
+        disabled={submitting}
+        className="w-full bg-gradient-gold text-primary-foreground shadow-gold"
+      >
+        {submitting ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          "Soumettre pour validation"
+        )}
       </Button>
     </div>
   );
@@ -189,7 +206,7 @@ function DocSlot({
             disabled={uploading}
             onClick={() => ref.current?.click()}
           >
-            <Upload className="h-3.5 w-3.5" />
+            {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
           </Button>
           {top && top.status === "pending" && (
             <Button size="sm" variant="ghost" onClick={() => remove(top.id)}>
