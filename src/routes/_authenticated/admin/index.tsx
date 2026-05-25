@@ -138,8 +138,11 @@ function AdminDashboard() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard icon={Users} label={t("crm.kpi.students")} value={stats?.students ?? 0} color="primary" />
+        {isDirector && (
+          <KpiCard icon={Briefcase} label="Total Conseillers" value={stats?.workers ?? 0} color="primary" />
+        )}
         <KpiCard icon={Clock} label={t("crm.kpi.pending")} value={stats?.pending ?? 0} color="warning" />
         <KpiCard icon={Plane} label={t("crm.kpi.visas")} value={stats?.visas ?? 0} color="success" />
       </div>
