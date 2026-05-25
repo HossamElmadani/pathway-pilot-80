@@ -14,36 +14,61 @@ function AdminDashboard() {
   const { profile, isDirector, user } = useAuth();
   const { t } = useI18n();
 
-  // Build a base "scope" — for workers, restrict to their assigned students.
-  // RLS already enforces this; we still apply explicit filters for accurate counts.
-  const studentFilter = (q: ReturnType<typeof supabase.from> extends infer _ ? any : any) => q;
-
   const { data: stats } = useQuery({
     queryKey: ["admin-stats", user?.id, isDirector],
     enabled: !!user,
     queryFn: async () => {
-      // students count
-      let studentsQ = supabase
-        .from("profiles")
-        .select("id", { count: "exact", head: true });
-      if (!isDirector) studentsQ = studentsQ.eq("assigned_worker_id", user!.id);
-      const students = await studentsQ;
+      // Strictly count profiles with role = 'student' (excludes director & workers)
+      const { data: studentRoles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "student");
+      let studentIds = (studentRoles ?? []).map((r) => r.user_id);
 
-      // pending docs — RLS scopes for workers
-      const pending = await supabase
-        .from("documents")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "pending");
+      // Workers see only their assigned students
+      if (!isDirector && studentIds.length > 0) {
+        const { data: assigned } = await supabase
+          .from("profiles")
+          .select("id")
+          .in("id", studentIds)
+          .eq("assigned_worker_id", user!.id);
+        studentIds = (assigned ?? []).map((p) => p.id);
+      }
 
-      const visas = await supabase
-        .from("step_progress")
-        .select("id", { count: "exact", head: true })
-        .eq("step", 6);
+      // Workers count — director only, strictly role = 'worker'
+      let workersCount = 0;
+      if (isDirector) {
+        const { count } = await supabase
+          .from("user_roles")
+          .select("user_id", { count: "exact", head: true })
+          .eq("role", "worker");
+        workersCount = count ?? 0;
+      }
+
+      let pending = 0;
+      let visas = 0;
+      if (studentIds.length > 0) {
+        const [p, v] = await Promise.all([
+          supabase
+            .from("documents")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "pending")
+            .in("user_id", studentIds),
+          supabase
+            .from("step_progress")
+            .select("id", { count: "exact", head: true })
+            .eq("step", 6)
+            .in("user_id", studentIds),
+        ]);
+        pending = p.count ?? 0;
+        visas = v.count ?? 0;
+      }
 
       return {
-        students: students.count ?? 0,
-        pending: pending.count ?? 0,
-        visas: visas.count ?? 0,
+        students: studentIds.length,
+        workers: workersCount,
+        pending,
+        visas,
       };
     },
   });
@@ -52,7 +77,15 @@ function AdminDashboard() {
     queryKey: ["step-dist", user?.id, isDirector],
     enabled: !!user,
     queryFn: async () => {
-      let q = supabase.from("profiles").select("current_step");
+      const empty = new Array(7).fill(0).map((_, i) => ({ step: i + 1, count: 0 }));
+      const { data: studentRoles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "student");
+      const studentIds = (studentRoles ?? []).map((r) => r.user_id);
+      if (studentIds.length === 0) return empty;
+
+      let q = supabase.from("profiles").select("current_step").in("id", studentIds);
       if (!isDirector) q = q.eq("assigned_worker_id", user!.id);
       const { data } = await q;
       const counts = new Array(7).fill(0);
@@ -105,8 +138,11 @@ function AdminDashboard() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard icon={Users} label={t("crm.kpi.students")} value={stats?.students ?? 0} color="primary" />
+        {isDirector && (
+          <KpiCard icon={Briefcase} label="Total Conseillers" value={stats?.workers ?? 0} color="primary" />
+        )}
         <KpiCard icon={Clock} label={t("crm.kpi.pending")} value={stats?.pending ?? 0} color="warning" />
         <KpiCard icon={Plane} label={t("crm.kpi.visas")} value={stats?.visas ?? 0} color="success" />
       </div>
