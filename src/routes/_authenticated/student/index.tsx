@@ -16,7 +16,7 @@ function StudentHome() {
   const { user, profile } = useAuth();
   const { t } = useI18n();
 
-  const { data: rows = [] } = useQuery({
+  const { data: rows = [], isLoading } = useQuery({
     queryKey: ["step_progress", user?.id],
     enabled: !!user,
     queryFn: async () => {
@@ -31,6 +31,8 @@ function StudentHome() {
 
   const stepMap = buildStepMap(rows as { step: number; status: any }[]);
   const { done, total, pct } = progressPct(stepMap);
+
+  if (isLoading) return <RoadmapSkeleton />;
 
   return (
     <div className="px-5 pt-8">
