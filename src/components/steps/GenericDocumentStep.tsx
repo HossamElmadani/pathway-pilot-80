@@ -206,7 +206,7 @@ function DocSlot({
             disabled={uploading}
             onClick={() => ref.current?.click()}
           >
-            <Upload className="h-3.5 w-3.5" />
+            {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
           </Button>
           {top && top.status === "pending" && (
             <Button size="sm" variant="ghost" onClick={() => remove(top.id)}>
