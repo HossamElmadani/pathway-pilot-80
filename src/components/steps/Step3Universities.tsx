@@ -4,25 +4,43 @@ import { useAuth } from "@/lib/auth-context";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Star, Check, Trophy } from "lucide-react";
+import { MapPin, Star, Check, Trophy, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const MAX = 5;
 
+type SuggestionRow = {
+  id: string;
+  note: string | null;
+  universities: {
+    id: string;
+    name: string;
+    location: string;
+    country: string | null;
+    price: number | null;
+    ranking: number | null;
+    badges: string[] | null;
+    description: string | null;
+  } | null;
+};
+
 export function Step3Universities() {
   const { user } = useAuth();
   const qc = useQueryClient();
 
-  const { data: universities = [] } = useQuery({
-    queryKey: ["universities"],
+  const { data: suggestions = [], isLoading } = useQuery({
+    queryKey: ["suggested-for-student", user?.id],
+    enabled: !!user,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("universities")
-        .select("*")
-        .order("ranking", { ascending: true, nullsFirst: false });
+        .from("suggested_universities")
+        .select(
+          "id,note,universities(id,name,location,country,price,ranking,badges,description)",
+        )
+        .eq("student_id", user!.id);
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as unknown as SuggestionRow[];
     },
   });
 
@@ -44,14 +62,18 @@ export function Step3Universities() {
   const toggle = async (uniId: string) => {
     if (!user) return;
     if (selectedIds.has(uniId)) {
-      await supabase
+      const { error } = await supabase
         .from("applications")
         .delete()
         .eq("user_id", user.id)
         .eq("university_id", uniId);
+      if (error) return toast.error(error.message);
     } else {
-      if (selectedIds.size >= MAX) return toast.error(`Max ${MAX} universités`);
-      await supabase.from("applications").insert({ user_id: user.id, university_id: uniId });
+      if (selectedIds.size >= MAX) return toast.error(`Maximum ${MAX} universités`);
+      const { error } = await supabase
+        .from("applications")
+        .insert({ user_id: user.id, university_id: uniId });
+      if (error) return toast.error(error.message);
     }
     qc.invalidateQueries({ queryKey: ["applications"] });
   };
@@ -59,28 +81,52 @@ export function Step3Universities() {
   const submit = async () => {
     if (!user) return;
     if (selectedIds.size === 0) return toast.error("Sélectionnez au moins une université");
-    await supabase
-      .from("step_progress")
-      .upsert(
-        { user_id: user.id, step: 3, status: "pending_review" },
-        { onConflict: "user_id,step" },
-      );
+    const { error } = await supabase.from("step_progress").upsert(
+      { user_id: user.id, step: 3, status: "pending_review" },
+      { onConflict: "user_id,step" },
+    );
+    if (error) return toast.error(error.message);
     qc.invalidateQueries({ queryKey: ["step_progress"] });
-    toast.success("Sélection soumise");
+    toast.success("Sélection soumise — en attente de validation");
   };
+
+  const universities = suggestions
+    .map((s) => s.universities)
+    .filter((u): u is NonNullable<typeof u> => !!u);
 
   return (
     <div className="space-y-3">
+      <Card className="border-primary/30 bg-primary/5 p-4">
+        <div className="flex items-start gap-3">
+          <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+          <div className="text-sm">
+            <p className="font-medium text-foreground">
+              Vos universités recommandées / جامعاتك المقترحة
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Choisissez jusqu'à {MAX} universités · اختر {MAX} كحد أقصى. Cette liste est
+              personnalisée par votre conseiller selon votre profil.
+            </p>
+          </div>
+        </div>
+      </Card>
+
       <div className="flex items-center justify-between rounded-xl border border-border bg-card px-3 py-2 text-xs">
-        <span className="text-muted-foreground">Max. 5 universités</span>
+        <span className="text-muted-foreground">Maximum {MAX} universités</span>
         <span className="font-semibold text-primary">
           {selectedIds.size} / {MAX}
         </span>
       </div>
 
-      {universities.length === 0 && (
-        <Card className="border-border bg-card p-6 text-center text-sm text-muted-foreground">
-          Aucune université n'a encore été ajoutée.
+      {!isLoading && universities.length === 0 && (
+        <Card className="border-dashed border-border bg-card p-8 text-center">
+          <Sparkles className="mx-auto h-8 w-8 text-muted-foreground/50" />
+          <p className="mt-3 text-sm font-medium">Aucune suggestion pour le moment</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Votre conseiller préparera bientôt une liste personnalisée d'universités pour vous.
+            <br />
+            <span dir="rtl">سيقوم مستشارك قريبًا بإعداد قائمة جامعات مخصصة لك.</span>
+          </p>
         </Card>
       )}
 
@@ -136,12 +182,14 @@ export function Step3Universities() {
         );
       })}
 
-      <Button
-        onClick={submit}
-        className="w-full bg-gradient-gold text-primary-foreground shadow-gold"
-      >
-        Soumettre la sélection
-      </Button>
+      {universities.length > 0 && (
+        <Button
+          onClick={submit}
+          className="w-full bg-gradient-gold text-primary-foreground shadow-gold"
+        >
+          Confirmer ma sélection / تأكيد اختياري
+        </Button>
+      )}
     </div>
   );
 }
