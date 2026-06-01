@@ -175,6 +175,33 @@ export type Database = {
         }
         Relationships: []
       }
+      suggested_universities: {
+        Row: {
+          created_at: string
+          id: string
+          note: string | null
+          student_id: string
+          suggested_by: string | null
+          university_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          student_id: string
+          suggested_by?: string | null
+          university_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          student_id?: string
+          suggested_by?: string | null
+          university_id?: string
+        }
+        Relationships: []
+      }
       universities: {
         Row: {
           badges: string[]
