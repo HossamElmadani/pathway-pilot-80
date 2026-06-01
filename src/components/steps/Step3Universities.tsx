@@ -92,9 +92,8 @@ export function Step3Universities() {
     toast.success("Sélection soumise — en attente de validation");
   };
 
-  const universities = suggestions
-    .map((s) => s.universities)
-    .filter((u): u is NonNullable<typeof u> => !!u);
+
+
 
   return (
     <div className="space-y-3">
