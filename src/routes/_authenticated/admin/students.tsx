@@ -196,6 +196,7 @@ function StudentCard({
   workers: { id: string; name: string }[];
   onReassign: (sid: string, wid: string) => void;
 }) {
+  const [suggestOpen, setSuggestOpen] = useState(false);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: student.id,
   });
@@ -245,6 +246,21 @@ function StudentCard({
           </Select>
         </div>
       )}
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-7 w-full text-[11px]"
+        onClick={() => setSuggestOpen(true)}
+      >
+        <Sparkles className="mr-1 h-3 w-3 text-primary" />
+        Suggérer universités
+      </Button>
+      <SuggestUniversitiesDialog
+        open={suggestOpen}
+        onOpenChange={setSuggestOpen}
+        studentId={student.id}
+        studentName={student.name}
+      />
     </Card>
   );
 }
