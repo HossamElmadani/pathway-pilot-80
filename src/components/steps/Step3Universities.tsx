@@ -22,7 +22,7 @@ type University = {
 };
 
 export function Step3Universities() {
-  const { user } = useAuth();
+  const { user, refresh } = useAuth();
   const qc = useQueryClient();
 
   const { data: universities = [], isLoading } = useQuery({
@@ -97,7 +97,7 @@ export function Step3Universities() {
       .eq("id", user.id);
     if (pErr) return toast.error(pErr.message);
     qc.invalidateQueries({ queryKey: ["step_progress"] });
-    qc.invalidateQueries({ queryKey: ["profile"] });
+    await refresh();
     toast.success("Sélection confirmée — Étape 4 débloquée");
   };
 
