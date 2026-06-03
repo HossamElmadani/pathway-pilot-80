@@ -85,6 +85,7 @@ export const inviteWorker = createServerFn({ method: "POST" })
         email: z.string().email().max(255),
         name: z.string().min(1).max(120),
         phone: z.string().max(40).optional(),
+        password: z.string().min(8).max(72).optional(),
       })
       .parse(input),
   )
@@ -92,7 +93,7 @@ export const inviteWorker = createServerFn({ method: "POST" })
     const callerRoles = await getRoles(context.userId);
     if (!callerRoles.includes("director")) throw new Error("Only the Director can create workers");
 
-    const password = tempPassword();
+    const password = data.password && data.password.length >= 8 ? data.password : tempPassword();
     const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
       email: data.email,
       password,
@@ -107,7 +108,7 @@ export const inviteWorker = createServerFn({ method: "POST" })
       name: data.name,
       email: data.email,
       phone: data.phone ?? null,
-      must_change_password: true,
+      must_change_password: false,
       current_step: 0,
       assigned_worker_id: null,
     });
