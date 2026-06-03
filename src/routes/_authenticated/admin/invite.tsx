@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useServerFn } from "@tanstack/react-start";
 import { inviteStudent, inviteWorker } from "@/lib/agency.functions";
 import { toast } from "sonner";
-import { Loader2, Copy, UserPlus, Check, Briefcase } from "lucide-react";
+import { Loader2, Copy, UserPlus, Check, Briefcase, RefreshCw, Eye, EyeOff } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +23,16 @@ import {
 export const Route = createFileRoute("/_authenticated/admin/invite")({
   component: InvitePage,
 });
+
+function genPassword() {
+  const a = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const b = "abcdefghijkmnpqrstuvwxyz";
+  let s = "";
+  for (let i = 0; i < 4; i++) s += a[Math.floor(Math.random() * a.length)];
+  for (let i = 0; i < 6; i++) s += b[Math.floor(Math.random() * b.length)];
+  s += "!" + Math.floor(Math.random() * 90 + 10);
+  return s;
+}
 
 function InvitePage() {
   const invite = useServerFn(inviteStudent);
