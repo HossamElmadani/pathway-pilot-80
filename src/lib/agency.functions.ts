@@ -336,18 +336,12 @@ export const setUserPassword = createServerFn({ method: "POST" })
     });
     if (error) throw new Error(error.message);
 
-    // If admin is changing someone else's password, force them to change it on next login.
-    if (data.userId !== callerId) {
-      await supabaseAdmin
-        .from("profiles")
-        .update({ must_change_password: true })
-        .eq("id", data.userId);
-    } else {
-      await supabaseAdmin
-        .from("profiles")
-        .update({ must_change_password: false })
-        .eq("id", data.userId);
-    }
+    // Agency has full control: passwords set by staff are final and do NOT
+    // force the user to change them at next login.
+    await supabaseAdmin
+      .from("profiles")
+      .update({ must_change_password: false })
+      .eq("id", data.userId);
 
     return { ok: true };
   });
