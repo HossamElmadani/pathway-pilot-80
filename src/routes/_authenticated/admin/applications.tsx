@@ -34,7 +34,8 @@ type Row = {
   status: string;
   user_id: string;
   universities: { name: string; location: string | null; country: string | null } | null;
-  profiles: { name: string | null; email: string | null } | null;
+  studentName: string;
+  studentEmail: string;
 };
 
 function ApplicationsPage() {
@@ -46,10 +47,24 @@ function ApplicationsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("applications")
-        .select("id,status,user_id,universities(name,location,country),profiles!applications_user_id_fkey(name,email)")
+        .select("id,status,user_id,universities(name,location,country)")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as unknown as Row[];
+      const list = data ?? [];
+      const ids = Array.from(new Set(list.map((r) => r.user_id)));
+      let profileMap = new Map<string, { name: string | null; email: string | null }>();
+      if (ids.length > 0) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("id,name,email")
+          .in("id", ids);
+        profileMap = new Map((profs ?? []).map((p) => [p.id, { name: p.name, email: p.email }]));
+      }
+      return list.map((r) => ({
+        ...r,
+        studentName: profileMap.get(r.user_id)?.name ?? "—",
+        studentEmail: profileMap.get(r.user_id)?.email ?? "",
+      })) as unknown as Row[];
     },
   });
 
@@ -106,8 +121,8 @@ function ApplicationsPage() {
                     <User className="h-4 w-4 text-primary-foreground" />
                   </div>
                   <div className="text-left">
-                    <p className="text-sm font-semibold">{apps[0].profiles?.name ?? "—"}</p>
-                    <p className="text-[11px] text-muted-foreground">{apps[0].profiles?.email}</p>
+                    <p className="text-sm font-semibold">{apps[0].studentName}</p>
+                    <p className="text-[11px] text-muted-foreground">{apps[0].studentEmail}</p>
                   </div>
                   <Badge className="ml-2 border-0 bg-muted text-muted-foreground">
                     {apps.length} candidature{apps.length > 1 ? "s" : ""}
