@@ -39,8 +39,10 @@ function InvitePage() {
   const inviteW = useServerFn(inviteWorker);
   const { isDirector } = useAuth();
   const qc = useQueryClient();
-  const [f, setF] = useState({ name: "", email: "", phone: "", assignedWorkerId: "" });
-  const [wf, setWf] = useState({ name: "", email: "", phone: "" });
+  const [f, setF] = useState({ name: "", email: "", phone: "", password: "", assignedWorkerId: "" });
+  const [wf, setWf] = useState({ name: "", email: "", phone: "", password: "" });
+  const [showPwd, setShowPwd] = useState(false);
+  const [showWPwd, setShowWPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [lastInvite, setLastInvite] = useState<{ email: string; password: string } | null>(null);
   const [copied, setCopied] = useState(false);
