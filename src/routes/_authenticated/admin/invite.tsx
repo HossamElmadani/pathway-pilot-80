@@ -64,6 +64,8 @@ function InvitePage() {
 
   const submitStudent = async () => {
     if (!f.name || !f.email) return toast.error("Nom et email requis");
+    if (!f.password || f.password.length < 8)
+      return toast.error("Mot de passe requis (min. 8 caractères)");
     setLoading(true);
     try {
       const r = await invite({
@@ -71,6 +73,7 @@ function InvitePage() {
           name: f.name,
           email: f.email,
           phone: f.phone || undefined,
+          password: f.password,
           assignedWorkerId:
             isDirector && f.assignedWorkerId && f.assignedWorkerId !== "__none__"
               ? f.assignedWorkerId
@@ -78,9 +81,9 @@ function InvitePage() {
         },
       });
       setLastInvite({ email: r.email, password: r.tempPassword });
-      setF({ name: "", email: "", phone: "", assignedWorkerId: "" });
+      setF({ name: "", email: "", phone: "", password: "", assignedWorkerId: "" });
       qc.invalidateQueries({ queryKey: ["staff-students"] });
-      toast.success("Étudiant invité");
+      toast.success("Étudiant créé");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Échec");
     }
@@ -89,11 +92,13 @@ function InvitePage() {
 
   const submitWorker = async () => {
     if (!wf.name || !wf.email) return toast.error("Nom et email requis");
+    if (!wf.password || wf.password.length < 8)
+      return toast.error("Mot de passe requis (min. 8 caractères)");
     setLoading(true);
     try {
       const r = await inviteW({ data: wf });
       setLastInvite({ email: r.email, password: r.tempPassword });
-      setWf({ name: "", email: "", phone: "" });
+      setWf({ name: "", email: "", phone: "", password: "" });
       qc.invalidateQueries({ queryKey: ["workers-for-assign"] });
       qc.invalidateQueries({ queryKey: ["workers-perf"] });
       toast.success("Conseiller créé");
