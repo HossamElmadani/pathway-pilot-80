@@ -253,6 +253,43 @@ function InvitePage() {
                     onChange={(e) => setWf({ ...wf, phone: e.target.value })}
                   />
                 </div>
+                <div className="space-y-1.5">
+                  <Label>Mot de passe</Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        type={showWPwd ? "text" : "password"}
+                        value={wf.password}
+                        onChange={(e) => setWf({ ...wf, password: e.target.value })}
+                        placeholder="Saisir le mot de passe (min. 8 caractères)"
+                        autoComplete="new-password"
+                        className="pr-9 font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowWPwd((s) => !s)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        tabIndex={-1}
+                      >
+                        {showWPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setWf({ ...wf, password: genPassword() });
+                        setShowWPwd(true);
+                      }}
+                      title="Générer un mot de passe"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Vous définissez ce mot de passe — l'utilisateur l'utilisera tel quel.
+                  </p>
+                </div>
                 <Button
                   onClick={submitWorker}
                   disabled={loading}
