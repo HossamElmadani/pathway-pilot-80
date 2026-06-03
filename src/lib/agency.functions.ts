@@ -27,6 +27,7 @@ export const inviteStudent = createServerFn({ method: "POST" })
         email: z.string().email().max(255),
         name: z.string().min(1).max(120),
         phone: z.string().max(40).optional(),
+        password: z.string().min(8).max(72).optional(),
         // director can pick a worker; worker auto-assigns to self
         assignedWorkerId: z.string().uuid().nullable().optional(),
       })
@@ -40,7 +41,7 @@ export const inviteStudent = createServerFn({ method: "POST" })
     if (!isDirector && !isWorker) throw new Error("Forbidden");
 
     const assigned = isDirector ? (data.assignedWorkerId ?? null) : userId;
-    const password = tempPassword();
+    const password = data.password && data.password.length >= 8 ? data.password : tempPassword();
 
     const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
       email: data.email,
@@ -56,7 +57,7 @@ export const inviteStudent = createServerFn({ method: "POST" })
       name: data.name,
       email: data.email,
       phone: data.phone ?? null,
-      must_change_password: true,
+      must_change_password: false,
       current_step: 1,
       assigned_worker_id: assigned,
     });
