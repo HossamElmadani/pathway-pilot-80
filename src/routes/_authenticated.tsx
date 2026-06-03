@@ -22,7 +22,6 @@ function AuthenticatedLayout() {
   useEffect(() => {
     if (loading) return;
     if (!isAuthenticated) navigate({ to: "/login" });
-    else if (profile?.must_change_password) navigate({ to: "/reset-password" });
   }, [loading, isAuthenticated, profile, navigate]);
 
   if (loading) {
