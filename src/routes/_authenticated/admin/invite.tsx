@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useServerFn } from "@tanstack/react-start";
 import { inviteStudent, inviteWorker } from "@/lib/agency.functions";
 import { toast } from "sonner";
-import { Loader2, Copy, UserPlus, Check, Briefcase } from "lucide-react";
+import { Loader2, Copy, UserPlus, Check, Briefcase, RefreshCw, Eye, EyeOff } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,13 +24,25 @@ export const Route = createFileRoute("/_authenticated/admin/invite")({
   component: InvitePage,
 });
 
+function genPassword() {
+  const a = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const b = "abcdefghijkmnpqrstuvwxyz";
+  let s = "";
+  for (let i = 0; i < 4; i++) s += a[Math.floor(Math.random() * a.length)];
+  for (let i = 0; i < 6; i++) s += b[Math.floor(Math.random() * b.length)];
+  s += "!" + Math.floor(Math.random() * 90 + 10);
+  return s;
+}
+
 function InvitePage() {
   const invite = useServerFn(inviteStudent);
   const inviteW = useServerFn(inviteWorker);
   const { isDirector } = useAuth();
   const qc = useQueryClient();
-  const [f, setF] = useState({ name: "", email: "", phone: "", assignedWorkerId: "" });
-  const [wf, setWf] = useState({ name: "", email: "", phone: "" });
+  const [f, setF] = useState({ name: "", email: "", phone: "", password: "", assignedWorkerId: "" });
+  const [wf, setWf] = useState({ name: "", email: "", phone: "", password: "" });
+  const [showPwd, setShowPwd] = useState(false);
+  const [showWPwd, setShowWPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [lastInvite, setLastInvite] = useState<{ email: string; password: string } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -52,6 +64,8 @@ function InvitePage() {
 
   const submitStudent = async () => {
     if (!f.name || !f.email) return toast.error("Nom et email requis");
+    if (!f.password || f.password.length < 8)
+      return toast.error("Mot de passe requis (min. 8 caractères)");
     setLoading(true);
     try {
       const r = await invite({
@@ -59,6 +73,7 @@ function InvitePage() {
           name: f.name,
           email: f.email,
           phone: f.phone || undefined,
+          password: f.password,
           assignedWorkerId:
             isDirector && f.assignedWorkerId && f.assignedWorkerId !== "__none__"
               ? f.assignedWorkerId
@@ -66,9 +81,9 @@ function InvitePage() {
         },
       });
       setLastInvite({ email: r.email, password: r.tempPassword });
-      setF({ name: "", email: "", phone: "", assignedWorkerId: "" });
+      setF({ name: "", email: "", phone: "", password: "", assignedWorkerId: "" });
       qc.invalidateQueries({ queryKey: ["staff-students"] });
-      toast.success("Étudiant invité");
+      toast.success("Étudiant créé");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Échec");
     }
@@ -77,11 +92,13 @@ function InvitePage() {
 
   const submitWorker = async () => {
     if (!wf.name || !wf.email) return toast.error("Nom et email requis");
+    if (!wf.password || wf.password.length < 8)
+      return toast.error("Mot de passe requis (min. 8 caractères)");
     setLoading(true);
     try {
       const r = await inviteW({ data: wf });
       setLastInvite({ email: r.email, password: r.tempPassword });
-      setWf({ name: "", email: "", phone: "" });
+      setWf({ name: "", email: "", phone: "", password: "" });
       qc.invalidateQueries({ queryKey: ["workers-for-assign"] });
       qc.invalidateQueries({ queryKey: ["workers-perf"] });
       toast.success("Conseiller créé");
@@ -137,6 +154,43 @@ function InvitePage() {
               <div className="space-y-1.5">
                 <Label>Téléphone (optionnel)</Label>
                 <Input value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Mot de passe</Label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Input
+                      type={showPwd ? "text" : "password"}
+                      value={f.password}
+                      onChange={(e) => setF({ ...f, password: e.target.value })}
+                      placeholder="Saisir le mot de passe (min. 8 caractères)"
+                      autoComplete="new-password"
+                      className="pr-9 font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPwd((s) => !s)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      tabIndex={-1}
+                    >
+                      {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setF({ ...f, password: genPassword() });
+                      setShowPwd(true);
+                    }}
+                    title="Générer un mot de passe"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Vous définissez ce mot de passe — l'utilisateur l'utilisera tel quel.
+                </p>
               </div>
               {isDirector && (
                 <div className="space-y-1.5">
@@ -198,6 +252,43 @@ function InvitePage() {
                     value={wf.phone}
                     onChange={(e) => setWf({ ...wf, phone: e.target.value })}
                   />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Mot de passe</Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        type={showWPwd ? "text" : "password"}
+                        value={wf.password}
+                        onChange={(e) => setWf({ ...wf, password: e.target.value })}
+                        placeholder="Saisir le mot de passe (min. 8 caractères)"
+                        autoComplete="new-password"
+                        className="pr-9 font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowWPwd((s) => !s)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        tabIndex={-1}
+                      >
+                        {showWPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setWf({ ...wf, password: genPassword() });
+                        setShowWPwd(true);
+                      }}
+                      title="Générer un mot de passe"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Vous définissez ce mot de passe — l'utilisateur l'utilisera tel quel.
+                  </p>
                 </div>
                 <Button
                   onClick={submitWorker}

@@ -17,10 +17,6 @@ function Index() {
       navigate({ to: "/login" });
       return;
     }
-    if (profile?.must_change_password) {
-      navigate({ to: "/reset-password" });
-      return;
-    }
     if (isDirector) navigate({ to: "/director/dashboard" });
     else if (isWorker) navigate({ to: "/worker/dashboard" });
     else if (isStudent) navigate({ to: "/student/portal" });

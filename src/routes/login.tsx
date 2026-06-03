@@ -25,8 +25,7 @@ function LoginPage() {
   useEffect(() => {
     if (authLoading) return;
     if (isAuthenticated) {
-      if (profile?.must_change_password) navigate({ to: "/reset-password" });
-      else if (isDirector) navigate({ to: "/director/dashboard" });
+      if (isDirector) navigate({ to: "/director/dashboard" });
       else if (isWorker) navigate({ to: "/worker/dashboard" });
       else if (isStudent) navigate({ to: "/student/portal" });
     }
