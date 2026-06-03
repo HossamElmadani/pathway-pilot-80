@@ -223,6 +223,55 @@ export const setStudentStep = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// Staff updates an application's status. When status becomes 'accepted',
+// auto-unlock Step 5 for the student.
+export const setApplicationStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        applicationId: z.string().uuid(),
+        status: z.enum(["pending", "submitted", "accepted", "rejected", "waitlisted"]),
+        notes: z.string().max(1000).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: app, error } = await supabase
+      .from("applications")
+      .update({ status: data.status, notes: data.notes ?? null })
+      .eq("id", data.applicationId)
+      .select("user_id")
+      .single();
+    if (error || !app) throw new Error(error?.message ?? "Failed");
+
+    if (data.status === "accepted") {
+      await supabase.from("step_progress").upsert(
+        [
+          {
+            user_id: app.user_id,
+            step: 4,
+            status: "approved",
+            approved_by: userId,
+            approved_at: new Date().toISOString(),
+          },
+          { user_id: app.user_id, step: 5, status: "in_progress" },
+        ],
+        { onConflict: "user_id,step" },
+      );
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("current_step")
+        .eq("id", app.user_id)
+        .maybeSingle();
+      if (prof && (prof.current_step ?? 1) < 5) {
+        await supabase.from("profiles").update({ current_step: 5 }).eq("id", app.user_id);
+      }
+    }
+    return { ok: true };
+  });
+
 export const approveStep = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
