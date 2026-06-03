@@ -22,7 +22,7 @@ type University = {
 };
 
 export function Step3Universities() {
-  const { user } = useAuth();
+  const { user, refresh } = useAuth();
   const qc = useQueryClient();
 
   const { data: universities = [], isLoading } = useQuery({
@@ -84,12 +84,21 @@ export function Step3Universities() {
     if (!user) return;
     if (selectedIds.size === 0) return toast.error("Sélectionnez au moins une université");
     const { error } = await supabase.from("step_progress").upsert(
-      { user_id: user.id, step: 3, status: "pending_review" },
+      [
+        { user_id: user.id, step: 3, status: "approved" },
+        { user_id: user.id, step: 4, status: "in_progress" },
+      ],
       { onConflict: "user_id,step" },
     );
     if (error) return toast.error(error.message);
+    const { error: pErr } = await supabase
+      .from("profiles")
+      .update({ current_step: 4 })
+      .eq("id", user.id);
+    if (pErr) return toast.error(pErr.message);
     qc.invalidateQueries({ queryKey: ["step_progress"] });
-    toast.success("Sélection soumise — en attente de validation");
+    await refresh();
+    toast.success("Sélection confirmée — Étape 4 débloquée");
   };
 
 
