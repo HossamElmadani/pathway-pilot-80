@@ -31,6 +31,7 @@ import { Route as AuthenticatedAdminStudentsRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminPasswordsRouteImport } from './routes/_authenticated/admin/passwords'
 import { Route as AuthenticatedAdminInviteRouteImport } from './routes/_authenticated/admin/invite'
 import { Route as AuthenticatedAdminBrandingRouteImport } from './routes/_authenticated/admin/branding'
+import { Route as AuthenticatedAdminApplicationsRouteImport } from './routes/_authenticated/admin/applications'
 import { Route as AuthenticatedStudentStepStepRouteImport } from './routes/_authenticated/student/step.$step'
 
 const TestDbRoute = TestDbRouteImport.update({
@@ -151,6 +152,12 @@ const AuthenticatedAdminBrandingRoute =
     path: '/branding',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminApplicationsRoute =
+  AuthenticatedAdminApplicationsRouteImport.update({
+    id: '/applications',
+    path: '/applications',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedStudentStepStepRoute =
   AuthenticatedStudentStepStepRouteImport.update({
     id: '/step/$step',
@@ -169,6 +176,7 @@ export interface FileRoutesByFullPath {
   '/director/dashboard': typeof DirectorDashboardRoute
   '/student/portal': typeof StudentPortalRoute
   '/worker/dashboard': typeof WorkerDashboardRoute
+  '/admin/applications': typeof AuthenticatedAdminApplicationsRoute
   '/admin/branding': typeof AuthenticatedAdminBrandingRoute
   '/admin/invite': typeof AuthenticatedAdminInviteRoute
   '/admin/passwords': typeof AuthenticatedAdminPasswordsRoute
@@ -191,6 +199,7 @@ export interface FileRoutesByTo {
   '/director/dashboard': typeof DirectorDashboardRoute
   '/student/portal': typeof StudentPortalRoute
   '/worker/dashboard': typeof WorkerDashboardRoute
+  '/admin/applications': typeof AuthenticatedAdminApplicationsRoute
   '/admin/branding': typeof AuthenticatedAdminBrandingRoute
   '/admin/invite': typeof AuthenticatedAdminInviteRoute
   '/admin/passwords': typeof AuthenticatedAdminPasswordsRoute
@@ -217,6 +226,7 @@ export interface FileRoutesById {
   '/director/dashboard': typeof DirectorDashboardRoute
   '/student/portal': typeof StudentPortalRoute
   '/worker/dashboard': typeof WorkerDashboardRoute
+  '/_authenticated/admin/applications': typeof AuthenticatedAdminApplicationsRoute
   '/_authenticated/admin/branding': typeof AuthenticatedAdminBrandingRoute
   '/_authenticated/admin/invite': typeof AuthenticatedAdminInviteRoute
   '/_authenticated/admin/passwords': typeof AuthenticatedAdminPasswordsRoute
@@ -243,6 +253,7 @@ export interface FileRouteTypes {
     | '/director/dashboard'
     | '/student/portal'
     | '/worker/dashboard'
+    | '/admin/applications'
     | '/admin/branding'
     | '/admin/invite'
     | '/admin/passwords'
@@ -265,6 +276,7 @@ export interface FileRouteTypes {
     | '/director/dashboard'
     | '/student/portal'
     | '/worker/dashboard'
+    | '/admin/applications'
     | '/admin/branding'
     | '/admin/invite'
     | '/admin/passwords'
@@ -290,6 +302,7 @@ export interface FileRouteTypes {
     | '/director/dashboard'
     | '/student/portal'
     | '/worker/dashboard'
+    | '/_authenticated/admin/applications'
     | '/_authenticated/admin/branding'
     | '/_authenticated/admin/invite'
     | '/_authenticated/admin/passwords'
@@ -473,6 +486,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminBrandingRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/applications': {
+      id: '/_authenticated/admin/applications'
+      path: '/applications'
+      fullPath: '/admin/applications'
+      preLoaderRoute: typeof AuthenticatedAdminApplicationsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/student/step/$step': {
       id: '/_authenticated/student/step/$step'
       path: '/step/$step'
@@ -484,6 +504,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminApplicationsRoute: typeof AuthenticatedAdminApplicationsRoute
   AuthenticatedAdminBrandingRoute: typeof AuthenticatedAdminBrandingRoute
   AuthenticatedAdminInviteRoute: typeof AuthenticatedAdminInviteRoute
   AuthenticatedAdminPasswordsRoute: typeof AuthenticatedAdminPasswordsRoute
@@ -494,6 +515,7 @@ interface AuthenticatedAdminRouteChildren {
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminApplicationsRoute: AuthenticatedAdminApplicationsRoute,
   AuthenticatedAdminBrandingRoute: AuthenticatedAdminBrandingRoute,
   AuthenticatedAdminInviteRoute: AuthenticatedAdminInviteRoute,
   AuthenticatedAdminPasswordsRoute: AuthenticatedAdminPasswordsRoute,

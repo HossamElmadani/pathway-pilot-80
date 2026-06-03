@@ -11,6 +11,7 @@ import {
   GraduationCap,
   Shield,
   KeyRound,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ function AdminLayout() {
     { to: "/admin", icon: LayoutDashboard, label: t("crm.dashboard"), exact: true },
     { to: "/admin/students", icon: Users, label: t("crm.students") },
     { to: "/admin/validation", icon: CheckSquare, label: t("crm.validation") },
+    { to: "/admin/applications", icon: ClipboardList, label: "Candidatures" },
     { to: "/admin/universities", icon: Building2, label: t("crm.universities") },
     { to: "/admin/invite", icon: UserPlus, label: t("crm.invite") },
     { to: "/admin/passwords", icon: KeyRound, label: "Mots de passe" },
